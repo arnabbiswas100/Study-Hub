@@ -23,7 +23,8 @@ const App = (() => {
   const applyTheme = (theme) => {
     document.documentElement.dataset.theme = theme;
     const btn = el('theme-toggle');
-    if (btn) btn.textContent = theme === 'dark' ? '☀' : '☾';
+    const icon = btn?.querySelector('.theme-icon');
+    if (icon) icon.textContent = theme === 'dark' ? '🌚' : '🌝';
     Storage.setTheme(theme);
   };
 

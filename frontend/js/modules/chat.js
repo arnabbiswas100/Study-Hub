@@ -55,7 +55,7 @@ const Chat = (() => {
       item.dataset.id = s.id;
       item.innerHTML = `
         <span class="folder-icon">💬</span>
-        <span class="folder-name session-title">${escHtml(truncate(s.title || 'New Chat', 28))}</span>
+        <span class="folder-name session-title">${escHtml(s.title || 'New Chat')}</span>
         <div class="folder-actions">
           <button class="folder-action-btn del-session" data-id="${s.id}" title="Delete">✕</button>
         </div>
@@ -342,8 +342,10 @@ const Chat = (() => {
     el2.className = 'message-wrap assistant typing-wrap';
     el2.id = 'typing-indicator';
     el2.innerHTML = `
-      <div class="message-bubble ai-bubble typing-bubble">
-        <span class="typing-dots"><span></span><span></span><span></span></span>
+      <div class="message-bubble ai-bubble shimmer-bubble">
+        <div class="shimmer-line shimmer-line--long"></div>
+        <div class="shimmer-line shimmer-line--mid"></div>
+        <div class="shimmer-line shimmer-line--short"></div>
       </div>
     `;
     list?.appendChild(el2);
@@ -445,7 +447,7 @@ const Chat = (() => {
   };
 
   const toggleContextItem = (type, checkbox) => {
-    const id = parseInt(checkbox.value, 10) || checkbox.value;
+    const id = checkbox.value; // IDs are UUIDs — never parseInt them
     if (type === 'note') {
       if (checkbox.checked) {
         if (!state.context.noteIds.includes(id)) state.context.noteIds.push(id);
@@ -514,7 +516,13 @@ const Chat = (() => {
 
   const init = () => {
     // New chat button
-    el('new-chat-btn')?.addEventListener('click', () => createSession());
+    el('new-chat-btn')?.addEventListener('click', () => {
+      state.activeSession = null;
+      state.messages = [];
+      Storage.setActiveChatSession(null);
+      renderSessionList();
+      showWelcomeView();
+    });
 
     // Send button & Enter key
     const sendBtn = el('chat-send-btn');
@@ -545,17 +553,15 @@ const Chat = (() => {
     // Clear context
     el('clear-context-btn')?.addEventListener('click', clearContext);
 
-    // Welcome screen "New Chat" cards
-    document.querySelectorAll('[data-new-chat]').forEach(btn => {
+    // Welcome screen suggestion chips
+    document.querySelectorAll('.suggestion-chip[data-prompt]').forEach(btn => {
       btn.addEventListener('click', () => {
-        const prompt = btn.dataset.newChat;
-        createSession(prompt.slice(0, 40)).then(() => {
-          if (input && prompt) {
-            input.value = prompt;
-            input.dispatchEvent(new Event('input'));
-            input.focus();
-          }
-        });
+        const prompt = btn.dataset.prompt;
+        if (input && prompt) {
+          input.value = prompt;
+          input.dispatchEvent(new Event('input'));
+          input.focus();
+        }
       });
     });
 

@@ -187,28 +187,31 @@
   background: var(--bg-3);
 }
 
-/* ── Typing indicator ───────────────────────────────────────── */
-.typing-indicator {
+/* ── Shimmer skeleton indicator ─────────────────────────────── */
+.shimmer-bubble {
   display: flex;
-  align-items: center;
-  gap: 5px;
+  flex-direction: column;
+  gap: 8px;
   padding: var(--sp-3) var(--sp-4);
-  background: var(--bg-2);
-  border: 1px solid var(--border);
-  border-radius: 4px var(--r-lg) var(--r-lg) var(--r-lg);
-  width: fit-content;
+  min-width: 180px;
 }
 
-.typing-dot {
-  width: 7px;
-  height: 7px;
-  background: var(--text-3);
-  border-radius: 50%;
-  animation: typingBounce 1.2s ease-in-out infinite;
+.shimmer-line {
+  height: 10px;
+  border-radius: var(--r-full);
+  background: linear-gradient(
+    90deg,
+    var(--bg-4) 25%,
+    var(--bg-hover) 50%,
+    var(--bg-4) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
 }
 
-.typing-dot:nth-child(2) { animation-delay: .2s; }
-.typing-dot:nth-child(3) { animation-delay: .4s; }
+.shimmer-line--long  { width: 100%; }
+.shimmer-line--mid   { width: 72%; }
+.shimmer-line--short { width: 48%; }
 
 /* ── Chat Input Bar ─────────────────────────────────────────── */
 .chat-input-bar {
@@ -252,7 +255,7 @@
   gap: var(--sp-2);
   background: var(--bg-2);
   border: 1.5px solid var(--border);
-  border-radius: var(--r-xl);
+  border-radius: var(--r-md);
   padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-2);
   transition: border-color var(--t-fast), box-shadow var(--t-fast);
   max-width: 760px;

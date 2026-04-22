@@ -83,16 +83,21 @@
 }
 
 .auth-logo-icon {
-  font-size: 26px;
-  color: var(--text);
+  display: none;
 }
 
 .auth-logo-text {
-  font-family: var(--font-display);
-  font-size: 20px;
-  font-weight: 800;
-  color: var(--text);
-  letter-spacing: -.02em;
+  display: none;
+}
+
+.auth-logo .brand-study {
+  font-size: 26px;
+}
+
+.auth-logo .brand-hub {
+  font-size: 23px;
+  padding: 3px 10px;
+  border-radius: 8px;
 }
 
 .auth-tagline {

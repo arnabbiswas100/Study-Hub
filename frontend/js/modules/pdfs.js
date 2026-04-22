@@ -161,40 +161,82 @@ const PDFs = (() => {
     return card;
   };
 
+  // ── PDF folder context menu (⋯ button) ───────────────────────
+  let activePdfContextMenu = null;
+
+  const openPdfFolderContextMenu = (e, folder) => {
+    if (activePdfContextMenu) activePdfContextMenu.remove();
+
+    const menu = document.createElement('div');
+    menu.className = 'folder-context-menu';
+    menu.innerHTML = `
+      <button class="folder-ctx-item" data-action="edit">✏️ Edit folder</button>
+      <button class="folder-ctx-item danger" data-action="delete">🗑 Delete folder</button>
+    `;
+    document.body.appendChild(menu);
+    activePdfContextMenu = menu;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const menuW = 160;
+    let left = rect.left - menuW + rect.width;
+    let top  = rect.bottom + 4;
+    if (left < 4) left = 4;
+    if (top + 100 > window.innerHeight) top = rect.top - 104;
+    menu.style.left = left + 'px';
+    menu.style.top  = top  + 'px';
+
+    menu.querySelector('[data-action="edit"]').addEventListener('click', () => {
+      menu.remove(); activePdfContextMenu = null;
+      openFolderModal('edit', folder);
+    });
+    menu.querySelector('[data-action="delete"]').addEventListener('click', () => {
+      menu.remove(); activePdfContextMenu = null;
+      deleteFolderConfirm(folder);
+    });
+
+    setTimeout(() => {
+      document.addEventListener('click', function handler() {
+        menu.remove(); activePdfContextMenu = null;
+        document.removeEventListener('click', handler);
+      });
+    }, 0);
+  };
+
   const renderFolderSidebar = () => {
     const list = el('pdf-folder-items');
     if (!list) return;
 
     list.innerHTML = '';
     state.folders.forEach(f => {
-      const item = document.createElement('div');
-      item.className = `folder-item${state.activeFolder === String(f.id) ? ' active' : ''}`;
-      item.dataset.id = f.id;
-      item.innerHTML = `
+      const wrap = document.createElement('div');
+      wrap.className = 'folder-item-wrap';
+
+      const btn = document.createElement('button');
+      btn.className = `folder-item${state.activeFolder === String(f.id) ? ' active' : ''}`;
+      btn.dataset.id = f.id;
+      btn.innerHTML = `
+        <span class="folder-color-dot" style="background:${escHtml(f.color || 'var(--text-3)')};"></span>
         <span class="folder-icon">${escHtml(f.icon || '📁')}</span>
-        <span class="folder-name">${escHtml(f.name)}</span>
-        <div class="folder-actions">
-          <button class="folder-action-btn edit-folder" data-id="${f.id}" title="Rename">✎</button>
-          <button class="folder-action-btn del-folder"  data-id="${f.id}" title="Delete">✕</button>
-        </div>
+        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;">${escHtml(f.name)}</span>
       `;
-      item.addEventListener('click', (e) => {
-        if (e.target.closest('.folder-actions')) return;
-        setActiveFolder(String(f.id));
-      });
-      item.querySelector('.edit-folder').addEventListener('click', (e) => {
+      btn.addEventListener('click', () => setActiveFolder(String(f.id)));
+
+      const menuBtn = document.createElement('button');
+      menuBtn.className = 'folder-menu-btn';
+      menuBtn.title = 'Folder options';
+      menuBtn.innerHTML = '⋯';
+      menuBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        openFolderModal('edit', f);
+        openPdfFolderContextMenu(e, f);
       });
-      item.querySelector('.del-folder').addEventListener('click', (e) => {
-        e.stopPropagation();
-        deleteFolderConfirm(f);
-      });
-      list.appendChild(item);
+
+      wrap.appendChild(btn);
+      wrap.appendChild(menuBtn);
+      list.appendChild(wrap);
     });
 
     // Highlight active
-    el('pdf-folder-list')?.querySelectorAll('.folder-item').forEach(i => {
+    el('pdf-folder-items')?.querySelectorAll('.folder-item').forEach(i => {
       i.classList.toggle('active', i.dataset.id === state.activeFolder);
     });
   };

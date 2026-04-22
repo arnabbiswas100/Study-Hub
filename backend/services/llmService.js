@@ -77,28 +77,33 @@ const chat = async (history, context, user) => {
 
   // Build context string
   let contextStr = '';
-  if (context.specificContent) {
-    const c = context.specificContent;
-    if (c.type === 'pdf') {
-      contextStr += `\n\n--- ATTACHED PDF: "${c.original_name}" (${c.page_count} pages) ---\n`;
-      contextStr += c.extracted_text ? c.extracted_text.slice(0, 15000) : '[No text extracted]';
-      contextStr += '\n--- END OF PDF ---\n';
-    } else if (c.type === 'note') {
-      contextStr += `\n\n--- ATTACHED NOTE: "${c.title}" ---\n${c.content}\n--- END OF NOTE ---\n`;
+
+  if (context.notes && context.notes.length > 0) {
+    if (context.notes.length === 1) {
+      contextStr += `\n\n--- ATTACHED NOTE: "${context.notes[0].title || 'Untitled'}" ---\n`;
+      contextStr += context.notes[0].content;
+      contextStr += '\n--- END OF NOTE ---\n';
+    } else {
+      contextStr += "\n\n--- USER'S ATTACHED NOTES ---\n";
+      context.notes.forEach(n => {
+        contextStr += `\n**${n.title || 'Untitled'}:**\n${n.content.slice(0, 3000)}\n---\n`;
+      });
     }
   }
-  if (context.notes.length > 0) {
-    contextStr += "\n\n--- USER'S RECENT NOTES ---\n";
-    context.notes.forEach(n => {
-      contextStr += `\n**${n.title || 'Untitled'}:**\n${n.content.slice(0, 2000)}\n---\n`;
-    });
-  }
-  if (context.pdfs.length > 0) {
-    contextStr += "\n\n--- USER'S PDF LIBRARY ---\n";
-    context.pdfs.forEach(p => {
-      contextStr += `\n**${p.original_name}** (${p.page_count} pages):\n`;
-      if (p.extracted_text) contextStr += p.extracted_text.slice(0, 3000) + '\n---\n';
-    });
+
+  if (context.pdfs && context.pdfs.length > 0) {
+    if (context.pdfs.length === 1) {
+      const p = context.pdfs[0];
+      contextStr += `\n\n--- ATTACHED PDF: "${p.original_name}" (${p.page_count} pages) ---\n`;
+      contextStr += p.extracted_text ? p.extracted_text.slice(0, 15000) : '[No text extracted]';
+      contextStr += '\n--- END OF PDF ---\n';
+    } else {
+      contextStr += "\n\n--- USER'S ATTACHED PDFs ---\n";
+      context.pdfs.forEach(p => {
+        contextStr += `\n**${p.original_name}** (${p.page_count} pages):\n`;
+        if (p.extracted_text) contextStr += p.extracted_text.slice(0, 5000) + '\n---\n';
+      });
+    }
   }
 
   const systemWithContext = SYSTEM_PROMPT + (contextStr ? `\n\nCONTEXT FROM USER'S LIBRARY:${contextStr}` : '');

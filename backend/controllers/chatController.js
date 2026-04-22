@@ -75,11 +75,29 @@ const getMessages = async (req, res, next) => {
 const sendMessage = async (req, res, next) => {
   try {
     const { sessionId } = req.params;
-    const { content, contextType, contextRefId } = req.body;
+    // Support both legacy single-item fields and the array fields sent by the frontend
+    const {
+      content,
+      context_note_ids,
+      context_pdf_ids,
+      // legacy fallback fields (kept for backwards compat)
+      contextType,
+      contextRefId,
+    } = req.body;
 
     if (!content || !content.trim()) {
       return res.status(400).json({ success: false, error: 'Message content is required' });
     }
+
+    // Normalise to arrays (frontend sends context_note_ids / context_pdf_ids)
+    const noteIds = Array.isArray(context_note_ids) ? context_note_ids
+      : (context_note_ids ? [context_note_ids] : []);
+    const pdfIds  = Array.isArray(context_pdf_ids)  ? context_pdf_ids
+      : (context_pdf_ids  ? [context_pdf_ids]  : []);
+
+    // Legacy single-item support: if arrays are empty but old fields are set, use those
+    if (noteIds.length === 0 && contextType === 'note' && contextRefId) noteIds.push(contextRefId);
+    if (pdfIds.length  === 0 && contextType === 'pdf'  && contextRefId) pdfIds.push(contextRefId);
 
     // Verify session ownership
     const session = await query(
@@ -88,15 +106,17 @@ const sendMessage = async (req, res, next) => {
     );
     if (!session.rows.length) return res.status(404).json({ success: false, error: 'Session not found' });
 
-    // Save user message
+    // Save user message (store first note/pdf id for reference if available)
+    const savedContextType   = noteIds.length ? 'note' : (pdfIds.length ? 'pdf' : null);
+    const savedContextRefId  = noteIds[0] || pdfIds[0] || null;
     const userMsg = await query(
       `INSERT INTO chat_messages (session_id, user_id, role, content, context_type, context_ref_id)
        VALUES ($1,$2,'user',$3,$4,$5) RETURNING *`,
-      [sessionId, req.user.id, content.trim(), contextType || null, contextRefId || null]
+      [sessionId, req.user.id, content.trim(), savedContextType, savedContextRefId]
     );
 
     // Gather context
-    const context = await buildContext(req.user.id, content, contextType, contextRefId);
+    const context = await buildContext(req.user.id, content, noteIds, pdfIds);
 
     // Fetch message history (last 20)
     const history = await query(
@@ -160,48 +180,52 @@ const sendMessage = async (req, res, next) => {
 
 // ── CONTEXT BUILDER ───────────────────────────────────────────────────────────
 
-async function buildContext(userId, userMessage, contextType, contextRefId) {
-  const context = { notes: [], pdfs: [], specificContent: null };
+async function buildContext(userId, userMessage, noteIds = [], pdfIds = []) {
+  const context = { notes: [], pdfs: [] };
   const msg = userMessage.toLowerCase();
 
-  // Detect intent keywords
-  const wantsNotes = msg.includes('note') || msg.includes('notes');
-  const wantsPdf = msg.includes('pdf') || msg.includes('document') || msg.includes('summarize');
-
-  if (contextType === 'pdf' && contextRefId) {
+  // ── Explicitly attached notes ────────────────────────────────
+  if (noteIds.length > 0) {
+    // Fetch all selected notes in one query using ANY($2)
+    const placeholders = noteIds.map((_, i) => `$${i + 2}`).join(',');
     const result = await query(
-      'SELECT original_name, extracted_text, page_count FROM pdfs WHERE id=$1 AND user_id=$2',
-      [contextRefId, userId]
+      `SELECT title, content FROM notes WHERE user_id=$1 AND id IN (${placeholders})`,
+      [userId, ...noteIds]
     );
-    if (result.rows.length) {
-      context.specificContent = { type: 'pdf', ...result.rows[0] };
-    }
-  } else if (contextType === 'note' && contextRefId) {
-    const result = await query(
-      'SELECT title, content FROM notes WHERE id=$1 AND user_id=$2',
-      [contextRefId, userId]
-    );
-    if (result.rows.length) {
-      context.specificContent = { type: 'note', ...result.rows[0] };
-    }
+    context.notes = result.rows;
   }
 
-  // Include recent notes if relevant
-  if (wantsNotes && !context.specificContent) {
-    const notes = await query(
-      'SELECT title, content FROM notes WHERE user_id=$1 ORDER BY updated_at DESC LIMIT 5',
-      [userId]
+  // ── Explicitly attached PDFs ─────────────────────────────────
+  if (pdfIds.length > 0) {
+    const placeholders = pdfIds.map((_, i) => `$${i + 2}`).join(',');
+    const result = await query(
+      `SELECT original_name, extracted_text, page_count FROM pdfs WHERE user_id=$1 AND id IN (${placeholders})`,
+      [userId, ...pdfIds]
     );
-    context.notes = notes.rows;
+    context.pdfs = result.rows;
   }
 
-  // Include PDF list if relevant
-  if (wantsPdf && !context.specificContent) {
-    const pdfs = await query(
-      'SELECT id, original_name, page_count, extracted_text FROM pdfs WHERE user_id=$1 ORDER BY created_at DESC LIMIT 3',
-      [userId]
-    );
-    context.pdfs = pdfs.rows;
+  // ── Keyword-based fallback (only when nothing is attached) ───
+  const hasAttached = noteIds.length > 0 || pdfIds.length > 0;
+  if (!hasAttached) {
+    const wantsNotes = msg.includes('note') || msg.includes('notes');
+    const wantsPdf   = msg.includes('pdf') || msg.includes('document') || msg.includes('summarize');
+
+    if (wantsNotes) {
+      const notes = await query(
+        'SELECT title, content FROM notes WHERE user_id=$1 ORDER BY updated_at DESC LIMIT 5',
+        [userId]
+      );
+      context.notes = notes.rows;
+    }
+
+    if (wantsPdf) {
+      const pdfs = await query(
+        'SELECT id, original_name, page_count, extracted_text FROM pdfs WHERE user_id=$1 ORDER BY created_at DESC LIMIT 3',
+        [userId]
+      );
+      context.pdfs = pdfs.rows;
+    }
   }
 
   return context;
