@@ -128,8 +128,7 @@ const sendMessage = async (req, res, next) => {
             [req.user.id, noteTitle, noteContent, '#1a2035']
           );
           savedNote = noteResult.rows[0];
-          // Strip only the [[CREATE_NOTE]] tags, keep the content visible in chat
-          aiResponse = aiResponse.replace('[[CREATE_NOTE]]', '').replace('[[/CREATE_NOTE]]', '').trim();
+          aiResponse = aiResponse.replace(/\[\[CREATE_NOTE\]\][\s\S]*?\[\[\/CREATE_NOTE\]\]/, '').trim();
           aiResponse += '\n\n✅ **Note saved to your Notes library!**';
         } catch (e) {
           console.error('Failed to save AI note:', e.message);
