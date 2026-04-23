@@ -97,9 +97,14 @@
 
 /* ── z-index: all panels above background ───────────────────── */
 [data-theme^="glass"] .sidebar,
-[data-theme^="glass"] .main-content,
-[data-theme^="glass"] .auth-screen {
+[data-theme^="glass"] .main-content {
   position: relative;
+  z-index: 1;
+}
+
+/* auth-screen must stay position:fixed so it can centre the card —
+   only lift its z-index above the animated background pseudo-element */
+[data-theme^="glass"] .auth-screen {
   z-index: 1;
 }
 
@@ -648,14 +653,16 @@
 /* Auth */
 [data-theme^="glass"] .auth-screen { background: transparent; }
 
-[data-theme="glass-dark"] .auth-card {
+[data-theme="glass-dark"] .auth-card,
+[data-theme="glass-dark"] .auth-panel {
   background: rgba(16,16,16,0.65);
   backdrop-filter: blur(36px) saturate(1.5);
   -webkit-backdrop-filter: blur(36px) saturate(1.5);
   border: 1px solid rgba(255,255,255,0.10);
   box-shadow: 0 24px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.07);
 }
-[data-theme="glass-light"] .auth-card {
+[data-theme="glass-light"] .auth-card,
+[data-theme="glass-light"] .auth-panel {
   background: rgba(250,250,250,0.65);
   backdrop-filter: blur(36px) saturate(1.5);
   -webkit-backdrop-filter: blur(36px) saturate(1.5);
@@ -725,27 +732,112 @@
   box-shadow: inset 0 1px 0 rgba(255,255,255,1), 0 1px 4px rgba(0,0,0,0.08);
 }
 
-/* Dark/Light icon toggle */
+/* ── Dark/Light circular toggle ─────────────────────────────── */
 .theme-mode-btn {
-  width: 34px;
-  height: 34px;
+  /* circular, same height as the pill (pill = 3px pad + ~26px inner = ~32px total) */
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-full);
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--r-md);
-  color: var(--text-2);
-  font-size: 18px;
-  line-height: 1;
-  transition: background var(--t-fast), color var(--t-fast);
   flex-shrink: 0;
-}
-.theme-mode-btn:hover {
-  background: var(--bg-hover);
-  color: var(--text);
+  border: 1px solid var(--border);
+  background: var(--bg-3);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.18);
+  transition: background var(--t-fast), border-color var(--t-fast),
+              box-shadow var(--t-fast);
+  cursor: pointer;
 }
 
-[data-theme="glass-dark"] .theme-mode-btn:hover { background: rgba(255,255,255,0.08); }
-[data-theme="glass-light"] .theme-mode-btn:hover { background: rgba(255,255,255,0.5); }
+.theme-mode-btn:hover {
+  background: var(--bg-2);
+  border-color: var(--border-2);
+}
+
+/* SVG icon */
+.theme-mode-icon {
+  width: 14px;
+  height: 14px;
+  display: block;
+  flex-shrink: 0;
+}
+
+/* full circle visible in light mode, outline hidden */
+.theme-mode-btn[data-mode="light"] .tmi-filled { display: block; }
+.theme-mode-btn[data-mode="light"] .tmi-outline { display: none;  }
+
+/* outline circle visible in dark mode, filled hidden */
+.theme-mode-btn[data-mode="dark"]  .tmi-filled { display: none;  }
+.theme-mode-btn[data-mode="dark"]  .tmi-outline { display: block; }
+
+/* ── Minimal dark ───────────────────────────────────────────── */
+[data-theme="minimal-dark"] .theme-mode-btn {
+  background: #1e1e1e;
+  border-color: #2e2e2e;
+}
+[data-theme="minimal-dark"] .theme-mode-btn .tmi-filled,
+[data-theme="minimal-dark"] .theme-mode-btn .tmi-outline {
+  fill: #f2efea;
+  stroke: #f2efea;
+}
+[data-theme="minimal-dark"] .theme-mode-btn:hover {
+  background: #2a2a2a;
+  border-color: #3a3a3a;
+}
+
+/* ── Minimal light ──────────────────────────────────────────── */
+[data-theme="minimal-light"] .theme-mode-btn {
+  background: #f0ede8;
+  border-color: #d8d4ce;
+}
+[data-theme="minimal-light"] .theme-mode-btn .tmi-filled,
+[data-theme="minimal-light"] .theme-mode-btn .tmi-outline {
+  fill: #111111;
+  stroke: #111111;
+}
+[data-theme="minimal-light"] .theme-mode-btn:hover {
+  background: #e4e1dc;
+  border-color: #c8c4be;
+}
+
+/* ── Glass dark ─────────────────────────────────────────────── */
+[data-theme="glass-dark"] .theme-mode-btn {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.10);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 1px 6px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06);
+}
+[data-theme="glass-dark"] .theme-mode-btn .tmi-filled,
+[data-theme="glass-dark"] .theme-mode-btn .tmi-outline {
+  fill: rgba(255,255,255,0.85);
+  stroke: rgba(255,255,255,0.85);
+}
+[data-theme="glass-dark"] .theme-mode-btn:hover {
+  background: rgba(255,255,255,0.12);
+  border-color: rgba(255,255,255,0.18);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.10);
+}
+
+/* ── Glass light ────────────────────────────────────────────── */
+[data-theme="glass-light"] .theme-mode-btn {
+  background: rgba(255,255,255,0.45);
+  border-color: rgba(255,255,255,0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 1px 6px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.9);
+}
+[data-theme="glass-light"] .theme-mode-btn .tmi-filled,
+[data-theme="glass-light"] .theme-mode-btn .tmi-outline {
+  fill: rgba(0,0,0,0.75);
+  stroke: rgba(0,0,0,0.75);
+}
+[data-theme="glass-light"] .theme-mode-btn:hover {
+  background: rgba(255,255,255,0.70);
+  border-color: rgba(255,255,255,0.92);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,1);
+}
 
 /* Hide pill label on very small screens */
 @media (max-width: 380px) {

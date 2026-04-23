@@ -116,8 +116,13 @@
         <button class="pill-option" data-style="glass">Glass</button>
       </div>
       <!-- Mode toggle: dark / light -->
-      <button class="theme-mode-btn" id="theme-mode-btn" aria-label="Toggle dark/light mode" title="Toggle dark/light">
-        <span class="theme-mode-icon">🌚</span>
+      <button class="theme-mode-btn" id="theme-mode-btn" aria-label="Toggle dark/light mode" title="Toggle dark/light" data-mode="dark">
+        <svg class="theme-mode-icon" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <!-- filled circle: light mode -->
+          <circle class="tmi-filled" cx="10" cy="10" r="5.5"/>
+          <!-- outlined circle: dark mode -->
+          <circle class="tmi-outline" cx="10" cy="10" r="5" fill="none" stroke-width="1.5"/>
+        </svg>
       </button>
       <div class="user-menu-wrap">
         <button class="user-avatar" id="user-avatar-btn" aria-label="User menu">

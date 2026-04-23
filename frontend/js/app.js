@@ -34,8 +34,7 @@ const App = (() => {
 
     // Update mode toggle icon
     const modeBtn  = el('theme-mode-btn');
-    const modeIcon = modeBtn?.querySelector('.theme-mode-icon');
-    if (modeIcon) modeIcon.textContent = mode === 'dark' ? '🌚' : '🌝';
+    if (modeBtn) modeBtn.dataset.mode = mode;
 
     // Update style pill active state
     document.querySelectorAll('.pill-option').forEach(btn => {
