@@ -5,3 +5,4 @@ uploads/thumbnails/
 *.log
 .DS_Store
 .vscode/
+Documentation/

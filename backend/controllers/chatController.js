@@ -134,7 +134,7 @@ const sendMessage = async (req, res, next) => {
       aiResponse = `I encountered an error connecting to the AI service: ${llmErr.message}. Please check your GEMINI_API_KEY configuration.`;
     }
 
-    // Check if AI wants to create a note
+    // Check if AI wants to create a note (only when explicit [[CREATE_NOTE]] tags are used)
     let savedNote = null;
     if (aiResponse.includes('[[CREATE_NOTE]]')) {
       const noteMatch = aiResponse.match(/\[\[CREATE_NOTE\]\]([\s\S]*?)\[\[\/CREATE_NOTE\]\]/);
@@ -148,10 +148,16 @@ const sendMessage = async (req, res, next) => {
             [req.user.id, noteTitle, noteContent, '#1a2035']
           );
           savedNote = noteResult.rows[0];
-          aiResponse = aiResponse.replace(/\[\[CREATE_NOTE\]\][\s\S]*?\[\[\/CREATE_NOTE\]\]/, '').trim();
-          aiResponse += '\n\n✅ **Note saved to your Notes library!**';
         } catch (e) {
           console.error('Failed to save AI note:', e.message);
+        }
+        // Strip the raw CREATE_NOTE tags from the response but keep everything else
+        const strippedResponse = aiResponse.replace(/\[\[CREATE_NOTE\]\][\s\S]*?\[\[\/CREATE_NOTE\]\]/, '').trim();
+        // If stripping left the response empty (AI put everything in tags), use the note content as the response
+        if (strippedResponse) {
+          aiResponse = strippedResponse + '\n\n✅ **Note saved to your Notes library!**';
+        } else {
+          aiResponse = noteContent + '\n\n✅ **Note saved to your Notes library!**';
         }
       }
     }

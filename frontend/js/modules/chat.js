@@ -176,19 +176,21 @@ const Chat = (() => {
   };
 
   // ─────────────────────────────────────────────────────────────
-  // Send message (with streaming support)
-  // ─────────────────────────────────────────────────────────────
+
+  let _sendLock = false; // Prevents duplicate sends from rapid clicks/Enter
 
   const sendMessage = async () => {
     const input   = el('chat-input');
     const sendBtn = el('chat-send-btn');
     const content = input?.value.trim();
-    if (!content || state.isStreaming) return;
+    if (!content || state.isStreaming || _sendLock) return;
+
+    _sendLock = true;
 
     // Auto-create session if none
     if (!state.activeSession) {
       await createSession(content.slice(0, 40) || 'New Chat');
-      if (!state.activeSession) return;
+      if (!state.activeSession) { _sendLock = false; return; }
     }
 
     // Clear input
@@ -216,36 +218,44 @@ const Chat = (() => {
         context_pdf_ids:  state.context.pdfIds,
       };
 
-      const response = await API.chat.sendMessage(state.activeSession.id, body);
+      const data = await API.chat.sendMessage(state.activeSession.id, body);
 
       removeTypingIndicator(typingEl);
 
-      // Handle streaming vs regular response
-      if (response && typeof response.getReader === 'function') {
-        await handleStreamResponse(response);
-      } else {
-        // Regular JSON response
-        const data = response;
-        const aiContent = data.assistantMessage?.content
-          || data.message?.content
-          || data.content
-          || data.reply
-          || data.data?.content
-          || 'No response.';
+      // Extract the AI response content — always show it in chat
+      const aiContent = data.assistantMessage?.content
+        || data.message?.content
+        || data.content
+        || data.reply
+        || data.data?.content
+        || 'No response.';
 
-        const aiMsg = {
-          role: 'assistant',
-          content: aiContent,
-          created_at: new Date().toISOString(),
-          id: data.assistantMessage?.id || data.message?.id || data.id,
-        };
-        appendMessage(aiMsg);
+      const aiMsg = {
+        role: 'assistant',
+        content: aiContent,
+        created_at: new Date().toISOString(),
+        id: data.assistantMessage?.id || data.message?.id || data.id,
+      };
+      appendMessage(aiMsg);
 
-        // Auto-update session title from first exchange
-        if (state.messages.filter(m => m.role === 'user').length === 1) {
-          const title = content.slice(0, 50);
-          updateSessionTitle(state.activeSession.id, title);
-        }
+      // Auto-save AI answer as a note (fire-and-forget — don't block chat)
+      const noteTitle = content.slice(0, 60) + (content.length > 60 ? '…' : '');
+      API.notes.create({
+        title: noteTitle,
+        content: aiContent,
+        color: null,
+        is_pinned: false,
+        folder_id: null,
+      }).then(() => {
+        toast.info('📝 Answer saved to Notes');
+      }).catch((noteErr) => {
+        console.warn('Auto-save note failed:', noteErr.message);
+      });
+
+      // Auto-update session title from first exchange
+      if (state.messages.filter(m => m.role === 'user').length === 1) {
+        const title = content.slice(0, 50);
+        updateSessionTitle(state.activeSession.id, title);
       }
     } catch (err) {
       removeTypingIndicator(typingEl);
@@ -258,81 +268,9 @@ const Chat = (() => {
       toast.error('Message failed: ' + err.message);
     } finally {
       state.isStreaming = false;
+      _sendLock = false;
       sendBtn.disabled = false;
       input.focus();
-    }
-  };
-
-  const handleStreamResponse = async (response) => {
-    const reader  = response.getReader();
-    const decoder = new TextDecoder();
-    let   buffer  = '';
-
-    // Create AI bubble for streaming
-    const list = el('messages-list');
-    const wrap = document.createElement('div');
-    wrap.className = 'message-wrap assistant streaming';
-    wrap.innerHTML = `
-      <div class="message-bubble ai-bubble">
-        <span class="ai-label">Study-Hub AI</span>
-        <div class="message-content stream-content"></div>
-        <span class="message-time">just now</span>
-      </div>
-    `;
-    list?.appendChild(wrap);
-    const contentDiv = wrap.querySelector('.stream-content');
-
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-
-        // Parse SSE or JSON chunks
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed || trimmed === 'data: [DONE]') continue;
-
-          const text = trimmed.startsWith('data: ')
-            ? trimmed.slice(6)
-            : trimmed;
-
-          try {
-            const chunk = JSON.parse(text);
-            const delta = chunk.choices?.[0]?.delta?.content
-              || chunk.content
-              || chunk.text
-              || '';
-            if (delta) {
-              contentDiv.innerHTML = renderMarkdown(
-                (contentDiv.dataset.raw || '') + delta
-              );
-              contentDiv.dataset.raw = (contentDiv.dataset.raw || '') + delta;
-              scrollToBottom();
-            }
-          } catch {
-            // Plain text chunk
-            if (text) {
-              contentDiv.innerHTML = renderMarkdown(
-                (contentDiv.dataset.raw || '') + text
-              );
-              contentDiv.dataset.raw = (contentDiv.dataset.raw || '') + text;
-              scrollToBottom();
-            }
-          }
-        }
-      }
-    } finally {
-      wrap.classList.remove('streaming');
-      state.messages.push({
-        role: 'assistant',
-        content: contentDiv.dataset.raw || '',
-        created_at: new Date().toISOString(),
-      });
     }
   };
 

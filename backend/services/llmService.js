@@ -2,13 +2,20 @@ const fetch = require('node-fetch');
 
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
-// Primary: openrouter/free auto-picks whatever free model is available right now
-// Fallbacks tried in order if primary fails
-const MODELS = [
+// Build model list: prefer env-configured model, then fallbacks
+const FALLBACK_MODELS = [
   'openrouter/free',
   'meta-llama/llama-3.3-70b-instruct:free',
   'google/gemma-3-12b-it:free',
 ];
+
+const getModels = () => {
+  const envModel = process.env.OPENROUTER_MODEL;
+  if (envModel && !FALLBACK_MODELS.includes(envModel)) {
+    return [envModel, ...FALLBACK_MODELS];
+  }
+  return envModel ? [envModel, ...FALLBACK_MODELS.filter(m => m !== envModel)] : FALLBACK_MODELS;
+};
 
 const SYSTEM_PROMPT = `You are Study-Hub AI, a smart study assistant integrated into a personal knowledge management system.
 
@@ -19,17 +26,25 @@ You have access to the user's notes and uploaded PDF documents. You can:
 4. Help organize and understand study materials
 5. Answer general knowledge questions
 
-When the user asks you to CREATE or SAVE notes, generate the note content between special tags:
+IMPORTANT RULES:
+- Always provide a thorough, comprehensive, and detailed answer to the user's question.
+- Never give one-word or extremely short answers. Explain concepts fully.
+- Your answer is automatically saved as a note, so you do NOT need to use [[CREATE_NOTE]] tags.
+- ONLY use [[CREATE_NOTE]] tags when the user EXPLICITLY asks you to "create a note" or "save a note" with specific content they dictate.
+- When you DO use [[CREATE_NOTE]] tags, you MUST ALSO provide a conversational answer OUTSIDE the tags. Never put your entire response inside the tags.
+
+When the user explicitly asks you to CREATE or SAVE a specific note, generate ONLY that note content between tags:
 [[CREATE_NOTE]]
 # Note Title
 
 Note content in markdown format...
 [[/CREATE_NOTE]]
 
-The system will automatically detect this and save the note to their library.
+But always include a conversational response outside the tags too.
 
-Always be concise, helpful, and academic in tone. Format responses with markdown when appropriate.
+Format responses with markdown when appropriate.
 Use headings, bullet points, and code blocks where they aid clarity.
+Give detailed, well-structured answers that help the user learn.
 
 If you reference a PDF or note, mention it by name for transparency.`;
 
@@ -46,9 +61,9 @@ const callOpenRouter = async (apiKey, model, messages) => {
       model,
       messages,
       temperature: 0.7,
-      max_tokens: 2048,
+      max_tokens: 4096,
     }),
-    timeout: 30000,
+    timeout: 60000,
   });
 
   if (!response.ok) {
@@ -115,7 +130,8 @@ const chat = async (history, context, user) => {
 
   // Try each model in order until one works
   let lastError;
-  for (const model of MODELS) {
+  const models = getModels();
+  for (const model of models) {
     try {
       console.log(`[LLM] Trying OpenRouter model: ${model}`);
       const text = await callOpenRouter(apiKey, model, messages);

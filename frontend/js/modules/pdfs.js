@@ -14,6 +14,7 @@ const PDFs = (() => {
     activeFolder:  'all',
     searchQuery:   '',
     dragCounter:   0,
+    isUploading:   false,  // Guard against duplicate uploads
   };
 
   const el = (id) => document.getElementById(id);
@@ -294,8 +295,19 @@ const PDFs = (() => {
       return;
     }
 
+    // Prevent duplicate uploads
+    if (state.isUploading) {
+      console.warn('Upload already in progress, ignoring duplicate request.');
+      return;
+    }
+    state.isUploading = true;
+
     const btn = el('upload-pdf-btn');
     setLoading(btn, true);
+
+    // Reset file input immediately to prevent re-triggering
+    const fileInput = el('pdf-file-input');
+    if (fileInput) fileInput.value = '';
 
     // Show upload progress toast
     const toastEl = showUploadProgress(file.name);
@@ -318,9 +330,7 @@ const PDFs = (() => {
       toast.error('Upload failed: ' + err.message);
     } finally {
       setLoading(btn, false);
-      // Reset file input
-      const input = el('pdf-file-input');
-      if (input) input.value = '';
+      state.isUploading = false;
     }
   };
 
@@ -385,10 +395,12 @@ const PDFs = (() => {
       e.preventDefault();
       state.dragCounter = 0;
       hideZone();
+      if (state.isUploading) return; // Prevent duplicate uploads from repeated drops
       const files = [...(e.dataTransfer.files || [])];
       const pdfs  = files.filter(f => f.type === 'application/pdf');
       if (pdfs.length === 0) { toast.error('Drop PDF files only.'); return; }
-      pdfs.forEach(uploadFile);
+      // Upload only the first PDF to prevent accidental duplicates
+      uploadFile(pdfs[0]);
     });
   };
 

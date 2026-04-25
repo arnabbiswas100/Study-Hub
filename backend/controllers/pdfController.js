@@ -116,24 +116,19 @@ const uploadPdf = async (req, res, next) => {
     const originalName = Buffer.from(req.file.originalname, 'latin1').toString('utf8');
     const fileSize = req.file.size;
 
-    // Extract text and page count
-    let extractedText = '';
-    let pageCount = 0;
-    try {
-      const pdfData = await pdfService.extractText(filePath);
-      extractedText = pdfData.text.slice(0, 100000); // cap at 100k chars
-      pageCount = pdfData.pageCount;
-    } catch (e) {
-      console.warn('PDF text extraction failed (non-fatal):', e.message);
-    }
-
+    // Save PDF record immediately (with empty text — extraction happens in background)
     const result = await query(
       `INSERT INTO pdfs (user_id, folder_id, filename, original_name, file_size, page_count, extracted_text, file_path)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
-      [req.user.id, folder_id || null, filename, originalName, fileSize, pageCount, extractedText, filePath]
+      [req.user.id, folder_id || null, filename, originalName, fileSize, 0, '', filePath]
     );
 
-    res.status(201).json({ success: true, pdf: result.rows[0] });
+    const savedPdf = result.rows[0];
+
+    // Kick off text extraction in the background (fire-and-forget)
+    pdfService.extractTextInBackground(filePath, savedPdf.id, query);
+
+    res.status(201).json({ success: true, pdf: savedPdf });
   } catch (err) { next(err); }
 };
 

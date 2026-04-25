@@ -59,6 +59,9 @@ const API = (() => {
       xhr.open('POST', BASE + path);
       if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
 
+      // 120-second timeout for large file uploads
+      xhr.timeout = 120000;
+
       xhr.upload.onprogress = (e) => {
         if (e.lengthComputable && onProgress) {
           onProgress(Math.round((e.loaded / e.total) * 100));
@@ -79,6 +82,7 @@ const API = (() => {
       };
 
       xhr.onerror = () => reject(new Error('Network error during upload'));
+      xhr.ontimeout = () => reject(new Error('Upload timed out. The file may be too large or the connection is slow. Please try again.'));
       xhr.send(formData);
     });
   };
