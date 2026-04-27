@@ -512,10 +512,13 @@
           </button>
           <div class="folder-select-dropdown hidden" id="note-folder-select-dropdown"></div>
         </div>
+        <button class="icon-btn note-mobile-toggle" id="note-mobile-toggle" title="Toggle preview">
+          <span class="toggle-label" data-edit="✏️" data-view="👁">✏️</span>
+        </button>
         <button class="icon-btn close-btn" id="close-note-modal">✕</button>
       </div>
     </div>
-    <div class="note-split-editor">
+    <div class="note-split-editor" data-mobile-mode="edit">
       <textarea id="note-content-input" class="note-content-input" placeholder="Write something… (Markdown supported)"></textarea>
       <div class="note-split-divider"></div>
       <div id="note-markdown-preview" class="note-markdown-preview">

@@ -393,24 +393,68 @@
   background: transparent;
 }
 
-/* ── Responsive: stack split editor on small screens ─────────── */
+/* ── Mobile toggle button — hidden on desktop ───────────────── */
+.note-mobile-toggle {
+  display: none;
+}
+
+/* ── Responsive: single-pane mode with toggle on mobile ─────── */
 @media (max-width: 640px) {
   .note-modal {
     max-width: 100%;
     max-height: 95vh;
   }
 
+  /* Show the toggle button on mobile */
+  .note-mobile-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--r-md);
+    font-size: 16px;
+    background: var(--bg-3);
+    border: 1px solid var(--border);
+    transition: background var(--t-fast), border-color var(--t-fast);
+  }
+
+  .note-mobile-toggle:hover {
+    background: var(--bg-hover);
+    border-color: var(--border-2);
+  }
+
+  /* Hide the split divider entirely on mobile */
+  .note-split-divider {
+    display: none;
+  }
+
+  /* The split editor becomes a single stacked column */
   .note-split-editor {
     flex-direction: column;
+    position: relative;
   }
 
-  .note-split-divider {
-    width: 100%;
-    height: 1px;
+  /* ── Edit mode: show textarea, hide preview ─────────────────── */
+  .note-split-editor[data-mobile-mode="edit"] .note-content-input {
+    display: block;
+    flex: 1;
   }
 
-  .note-markdown-preview {
-    max-height: 180px;
+  .note-split-editor[data-mobile-mode="edit"] .note-markdown-preview {
+    display: none;
+  }
+
+  /* ── View mode: show preview, hide textarea ─────────────────── */
+  .note-split-editor[data-mobile-mode="view"] .note-content-input {
+    display: none;
+  }
+
+  .note-split-editor[data-mobile-mode="view"] .note-markdown-preview {
+    display: block;
+    flex: 1;
+    max-height: none;
+    overflow-y: auto;
   }
 
   /* Note modal header — wrap actions on mobile */

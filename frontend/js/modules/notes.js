@@ -415,6 +415,16 @@ window.Notes = (() => {
     // Render initial markdown preview
     updateMarkdownPreview();
 
+    // Reset mobile toggle to edit mode
+    const splitEditor = document.querySelector('.note-split-editor');
+    if (splitEditor) splitEditor.dataset.mobileMode = 'edit';
+    const toggleBtn = el('note-mobile-toggle');
+    if (toggleBtn) {
+      const lbl = toggleBtn.querySelector('.toggle-label');
+      if (lbl) lbl.textContent = lbl.dataset.edit;
+      toggleBtn.title = 'Show preview';
+    }
+
     show(overlay);
     titleEl?.focus();
   };
@@ -702,6 +712,20 @@ window.Notes = (() => {
 
     // Modal actions
     el('close-note-modal')?.addEventListener('click', closeNoteModal);
+
+    // Mobile edit/view toggle
+    el('note-mobile-toggle')?.addEventListener('click', () => {
+      const splitEditor = document.querySelector('.note-split-editor');
+      if (!splitEditor) return;
+      const isEdit = splitEditor.dataset.mobileMode === 'edit';
+      splitEditor.dataset.mobileMode = isEdit ? 'view' : 'edit';
+      const btn = el('note-mobile-toggle');
+      const lbl = btn?.querySelector('.toggle-label');
+      if (lbl) lbl.textContent = isEdit ? lbl.dataset.view : lbl.dataset.edit;
+      if (btn) btn.title = isEdit ? 'Show editor' : 'Show preview';
+      // Ensure preview is fresh when switching to view
+      if (isEdit) updateMarkdownPreview();
+    });
     el('save-note-btn')?.addEventListener('click', saveNote);
     el('delete-note-btn')?.addEventListener('click', () => {
       if (state.editingNote) deleteNote(state.editingNote);
