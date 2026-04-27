@@ -415,14 +415,14 @@ window.Notes = (() => {
     // Render initial markdown preview
     updateMarkdownPreview();
 
-    // Reset mobile toggle to edit mode
+    // Reset mobile toggle to view mode
     const splitEditor = document.querySelector('.note-split-editor');
-    if (splitEditor) splitEditor.dataset.mobileMode = 'edit';
+    if (splitEditor) splitEditor.dataset.mobileMode = 'view';
     const toggleBtn = el('note-mobile-toggle');
     if (toggleBtn) {
       const lbl = toggleBtn.querySelector('.toggle-label');
-      if (lbl) lbl.textContent = lbl.dataset.edit;
-      toggleBtn.title = 'Show preview';
+      if (lbl) lbl.textContent = lbl.dataset.view;
+      toggleBtn.title = 'Show editor';
     }
 
     show(overlay);
