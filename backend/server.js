@@ -16,6 +16,7 @@ const PORT = process.env.PORT || 3000;
 
 // ── Security Headers ─────────────────────────────────────────────────────────
 app.use(helmet({
+  crossOriginEmbedderPolicy: false,
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],

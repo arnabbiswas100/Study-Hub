@@ -252,6 +252,7 @@ const streamPdf = async (req, res, next) => {
         'Accept-Ranges': 'bytes',
         'Content-Length': chunkSize,
         'Content-Type': 'application/pdf',
+        'Content-Disposition': `inline; filename="${encodeURIComponent(pdf.original_name)}"`,
       });
       fs.createReadStream(pdf.file_path, { start, end }).pipe(res);
     } else {
