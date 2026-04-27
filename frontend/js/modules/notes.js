@@ -626,7 +626,11 @@ window.Notes = (() => {
     folderModalEditId = null;
   };
 
+  let isSavingFolder = false;
+
   const saveFolder = async () => {
+    if (isSavingFolder) return; // prevent duplicate submissions
+
     const name = el('folder-name-input')?.value.trim();
     if (!name) { toast.error('Folder name required.'); return; }
 
@@ -635,6 +639,10 @@ window.Notes = (() => {
     const payload = folderModalEditId
       ? { name, icon: state.iconSelected, color: state.folderColor || null }
       : { name, icon: state.iconSelected, color: state.folderColor || null, parent_id: state.newFolderParentId || null };
+
+    isSavingFolder = true;
+    const saveBtn = el('save-folder-btn');
+    if (saveBtn) saveBtn.disabled = true;
 
     try {
       if (state.folderModalMode === 'note') {
@@ -656,6 +664,9 @@ window.Notes = (() => {
       toast.success(folderModalEditId ? 'Folder updated.' : 'Folder created.');
     } catch (err) {
       toast.error('Save failed: ' + err.message);
+    } finally {
+      isSavingFolder = false;
+      if (saveBtn) saveBtn.disabled = false;
     }
   };
 

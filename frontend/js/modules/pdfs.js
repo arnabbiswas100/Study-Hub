@@ -633,7 +633,11 @@ window.PDFs = (() => {
     setTimeout(() => nameIn.focus(), 50);
   };
 
+  let isSavingFolder = false;
+
   const saveFolder = async () => {
+    if (isSavingFolder) return; // prevent duplicate submissions
+
     const nameIn = el('folder-name-input');
     const name   = nameIn?.value.trim();
     if (!name) { toast.error('Folder name required.'); return; }
@@ -642,6 +646,10 @@ window.PDFs = (() => {
     if (overlay?.dataset.context !== 'pdf') return; // handled by Notes module
 
     const icon = document.querySelector('#icon-picker .icon-option.selected')?.dataset.icon || '📁';
+
+    isSavingFolder = true;
+    const saveBtn = el('save-folder-btn');
+    if (saveBtn) saveBtn.disabled = true;
 
     try {
       if (folderEditTarget) {
@@ -655,6 +663,9 @@ window.PDFs = (() => {
       await loadFolders();
     } catch (err) {
       toast.error('Failed to save folder: ' + err.message);
+    } finally {
+      isSavingFolder = false;
+      if (saveBtn) saveBtn.disabled = false;
     }
   };
 
