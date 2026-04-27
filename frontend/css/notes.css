@@ -402,6 +402,7 @@
 @media (max-width: 640px) {
   .note-modal {
     max-width: 100%;
+    height: 95vh;
     max-height: 95vh;
   }
 
@@ -433,6 +434,8 @@
   .note-split-editor {
     flex-direction: column;
     position: relative;
+    min-height: 0;
+    overflow: hidden;
   }
 
   /* ── Edit mode: show textarea, hide preview ─────────────────── */
