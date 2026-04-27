@@ -582,11 +582,14 @@
       </div>
     </div>
     <div class="pdf-viewer-body" id="pdf-viewer-body">
-      <div class="pdf-loading" id="pdf-loading">
+      <!-- Mobile: PDF.js canvas renderer -->
+      <div class="pdf-loading hidden" id="pdf-loading">
         <div class="pdf-loading-spinner"></div>
         <span>Loading PDF…</span>
       </div>
-      <div class="pdf-canvas-container" id="pdf-canvas-container"></div>
+      <div class="pdf-canvas-container hidden" id="pdf-canvas-container"></div>
+      <!-- Desktop: native iframe viewer (full browser PDF controls) -->
+      <iframe id="pdf-iframe" class="pdf-iframe hidden" title="PDF Viewer"></iframe>
     </div>
   </div>
 </div>

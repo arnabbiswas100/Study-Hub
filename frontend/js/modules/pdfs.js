@@ -513,95 +513,108 @@ window.PDFs = (() => {
   // Viewer
   // ─────────────────────────────────────────────────────────────
 
-  // ── PDF.js renderer ───────────────────────────────────────────
-  // Set the worker source once (from the same CDN version)
+  // ── PDF.js renderer setup (mobile only) ───────────────────────
   if (window.pdfjsLib) {
     window.pdfjsLib.GlobalWorkerOptions.workerSrc =
       'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   }
 
-  let _currentPdfDoc = null; // track for cleanup
+  let _currentPdfDoc = null;
+
+  const isMobile = () =>
+    /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
+    ('ontouchstart' in window && window.innerWidth < 1024);
 
   const openViewer = async (pdf) => {
-    const overlay    = el('pdf-viewer-overlay');
-    const container  = el('pdf-canvas-container');
-    const loading    = el('pdf-loading');
+    const overlay     = el('pdf-viewer-overlay');
+    const iframe      = el('pdf-iframe');
+    const container   = el('pdf-canvas-container');
+    const loading     = el('pdf-loading');
     const pageCounter = el('pdf-page-counter');
-    const title      = el('pdf-viewer-title');
-    const dlBtn      = el('pdf-download-btn');
-    const chatBtn    = el('pdf-chat-btn');
-    if (!overlay || !container) return;
+    const title       = el('pdf-viewer-title');
+    const dlBtn       = el('pdf-download-btn');
+    const chatBtn     = el('pdf-chat-btn');
+    if (!overlay) return;
 
-    // Show modal immediately with loading state
     title.textContent = pdf.original_name || pdf.filename || 'PDF';
-    container.innerHTML = '';
-    pageCounter.classList.add('hidden');
-    loading.classList.remove('hidden');
-    show(overlay);
-    document.body.style.overflow = 'hidden';
-
     dlBtn.onclick  = () => downloadPDF(pdf);
     chatBtn.onclick = () => {
       closeViewer();
       window.dispatchEvent(new CustomEvent('chat:attach-pdf', { detail: { pdf } }));
     };
 
-    try {
-      if (!window.pdfjsLib) throw new Error('PDF.js not loaded');
+    show(overlay);
+    document.body.style.overflow = 'hidden';
 
-      // Fetch the PDF as binary data using the authenticated stream URL
-      const response = await fetch(API.pdfs.streamUrl(pdf.id));
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const arrayBuffer = await response.arrayBuffer();
-
-      // Load with PDF.js
-      const loadingTask = window.pdfjsLib.getDocument({ data: arrayBuffer });
-      const pdfDoc = await loadingTask.promise;
-      _currentPdfDoc = pdfDoc;
-
+    if (!isMobile()) {
+      // ── Desktop: native iframe with full PDF controls ─────────
+      iframe.classList.remove('hidden');
+      container.classList.add('hidden');
       loading.classList.add('hidden');
-      pageCounter.textContent = `${pdfDoc.numPages} page${pdfDoc.numPages !== 1 ? 's' : ''}`;
-      pageCounter.classList.remove('hidden');
+      pageCounter.classList.add('hidden');
+      iframe.src = API.pdfs.streamUrl(pdf.id);
+    } else {
+      // ── Mobile: PDF.js canvas renderer ────────────────────────
+      iframe.classList.add('hidden');
+      iframe.src = '';
+      container.classList.remove('hidden');
+      container.innerHTML = '';
+      pageCounter.classList.add('hidden');
+      loading.classList.remove('hidden');
 
-      // Calculate scale based on container width
-      const containerWidth = container.clientWidth - 32; // subtract padding
+      try {
+        if (!window.pdfjsLib) throw new Error('PDF.js not loaded');
 
-      // Render all pages sequentially
-      for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
-        const page = await pdfDoc.getPage(pageNum);
-        const baseViewport = page.getViewport({ scale: 1 });
-        const scale = Math.min(containerWidth / baseViewport.width, 2.5);
-        const viewport = page.getViewport({ scale });
+        const response = await fetch(API.pdfs.streamUrl(pdf.id));
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const arrayBuffer = await response.arrayBuffer();
 
-        const canvas = document.createElement('canvas');
-        canvas.width  = viewport.width;
-        canvas.height = viewport.height;
-        canvas.style.width  = '100%';
-        canvas.style.height = 'auto';
+        const loadingTask = window.pdfjsLib.getDocument({ data: arrayBuffer });
+        const pdfDoc = await loadingTask.promise;
+        _currentPdfDoc = pdfDoc;
 
-        container.appendChild(canvas);
+        loading.classList.add('hidden');
+        pageCounter.textContent = `${pdfDoc.numPages} page${pdfDoc.numPages !== 1 ? 's' : ''}`;
+        pageCounter.classList.remove('hidden');
 
-        const ctx = canvas.getContext('2d');
-        await page.render({ canvasContext: ctx, viewport }).promise;
+        const containerWidth = container.clientWidth - 32;
+
+        for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
+          const page = await pdfDoc.getPage(pageNum);
+          const baseViewport = page.getViewport({ scale: 1 });
+          const scale = Math.min(containerWidth / baseViewport.width, 2.5);
+          const viewport = page.getViewport({ scale });
+
+          const canvas = document.createElement('canvas');
+          canvas.width  = viewport.width;
+          canvas.height = viewport.height;
+          canvas.style.width  = '100%';
+          canvas.style.height = 'auto';
+          container.appendChild(canvas);
+
+          await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+        }
+      } catch (err) {
+        loading.classList.add('hidden');
+        container.innerHTML = `<div style="padding:2rem;text-align:center;color:var(--text-3)">
+          <div style="font-size:2rem;margin-bottom:1rem">📄</div>
+          <div>Could not render PDF.</div>
+          <div style="font-size:12px;margin-top:.5rem;opacity:.6">${err.message}</div>
+        </div>`;
       }
-    } catch (err) {
-      loading.classList.add('hidden');
-      container.innerHTML = `<div style="padding:2rem;text-align:center;color:var(--text-3)">
-        <div style="font-size:2rem;margin-bottom:1rem">📄</div>
-        <div>Could not render PDF.</div>
-        <div style="font-size:12px;margin-top:.5rem;opacity:.6">${err.message}</div>
-      </div>`;
     }
   };
 
   const closeViewer = () => {
-    const overlay   = el('pdf-viewer-overlay');
-    const container = el('pdf-canvas-container');
-    const loading   = el('pdf-loading');
+    const overlay     = el('pdf-viewer-overlay');
+    const iframe      = el('pdf-iframe');
+    const container   = el('pdf-canvas-container');
+    const loading     = el('pdf-loading');
     const pageCounter = el('pdf-page-counter');
-    if (overlay) hide(overlay);
-    if (container) container.innerHTML = '';
-    if (loading)  loading.classList.remove('hidden');
+    if (overlay)     hide(overlay);
+    if (iframe)      { iframe.src = ''; iframe.classList.add('hidden'); }
+    if (container)   { container.innerHTML = ''; container.classList.add('hidden'); }
+    if (loading)     loading.classList.add('hidden');
     if (pageCounter) pageCounter.classList.add('hidden');
     if (_currentPdfDoc) { _currentPdfDoc.destroy(); _currentPdfDoc = null; }
     document.body.style.overflow = '';

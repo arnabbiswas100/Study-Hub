@@ -219,6 +219,13 @@
   border-radius: 2px;
 }
 
+/* ── Desktop: native iframe ─────────────────────────────────── */
+.pdf-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
 /* ── Loading state ───────────────────────────────────────────── */
 .pdf-loading {
   position: absolute;
