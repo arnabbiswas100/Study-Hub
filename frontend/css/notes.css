@@ -430,19 +430,17 @@
     display: none;
   }
 
-  /* The split editor becomes a single stacked column */
+  /* The split editor: relative container, children fill via absolute */
   .note-split-editor {
-    flex-direction: column;
     position: relative;
     min-height: 0;
-    overflow: hidden;
   }
 
-  /* ── Edit mode: show textarea, hide preview ─────────────────── */
+  /* ── Edit mode: textarea fills container, preview hidden ────── */
   .note-split-editor[data-mobile-mode="edit"] .note-content-input {
-    display: block;
-    flex: 1;
-    min-height: 0;
+    position: absolute;
+    inset: 0;
+    width: 100%;
     height: 100%;
   }
 
@@ -450,14 +448,16 @@
     display: none;
   }
 
-  /* ── View mode: show preview, hide textarea ─────────────────── */
+  /* ── View mode: preview fills container, textarea hidden ────── */
   .note-split-editor[data-mobile-mode="view"] .note-content-input {
     display: none;
   }
 
   .note-split-editor[data-mobile-mode="view"] .note-markdown-preview {
-    display: block;
-    flex: 1;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
     max-height: none;
     overflow-y: auto;
   }
